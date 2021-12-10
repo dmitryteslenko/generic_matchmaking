@@ -4,6 +4,8 @@ public final class AppConfig {
 
     private AppConfig() {}
 
+    public final static int PRIORITY_UPDATE_TASK_PERIOD_IN_SEC = 5;
+
     public static final int MOCK_QUEUE_THREADS = 4;
     public static final int MOCK_PLAYERS_PER_QUEUE_TASK = 250;
 

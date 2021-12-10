@@ -9,6 +9,8 @@ public class Team {
 
     // Each Player skill ranges in delta of first Player in a Team
     private final List<Player> players = new ArrayList<>();
+    // Depends on oldest Player waiting time
+    private int priorityLevel = 0;
 
     public static final int MIN_SQUAD_SIZE = 2;
     public static final int FULL_TEAM_SIZE = 6;
@@ -47,10 +49,12 @@ public class Team {
         }
     }
 
-    // Determines if difference between first Team Player
-    // and player is within Player balance delta
+    // Determines if difference between first Team Player and player
+    // is within Player balance delta + priority overhead
     public boolean isSkillEligible(Player player) {
-        return Constants.Thresholds.PLAYER_DELTA >= Math.abs(players.get(0).getSkill() - player.getSkill());
+        return Constants.Thresholds.PLAYER_DELTA +
+                Constants.Thresholds.PRIORITY_LEVEL_DELTAS.get(priorityLevel)
+                >= Math.abs(players.get(0).getSkill() - player.getSkill());
     }
 
 
@@ -62,6 +66,14 @@ public class Team {
 
     public List<Player> getPlayers() {
         return players;
+    }
+
+    public int getPriorityLevel() {
+        return priorityLevel;
+    }
+
+    public void setPriorityLevel(int priorityLevel) {
+        this.priorityLevel = priorityLevel;
     }
 
 }

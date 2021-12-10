@@ -1,14 +1,17 @@
 package generic_matchmaking.service;
 
+import generic_matchmaking.config.AppConfig;
 import generic_matchmaking.entity.Match;
 import generic_matchmaking.entity.Player;
 import generic_matchmaking.entity.Team;
+import generic_matchmaking.util.Constants;
 import generic_matchmaking.util.LogHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public class MatchmakingService {
 
@@ -19,9 +22,14 @@ public class MatchmakingService {
 
     private final MatchBalancingService matchBalancingService = new MatchBalancingService();
     private final ExecutorService matchmakingExecutor = Executors.newSingleThreadExecutor();
+    private final ScheduledExecutorService priorityUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
 
     public void startMatchmaking(PriorityBlockingQueue<Player> playerQueue) {
         matchmakingExecutor.execute(matchmakingTask(playerQueue));
+        // Every PRIORITY_UPDATE_TASK_PERIOD_IN_SEC checks if Team priority level should be updated
+        priorityUpdateExecutor.scheduleAtFixedRate(
+                priorityUpdateTask(), 0,
+                AppConfig.PRIORITY_UPDATE_TASK_PERIOD_IN_SEC, TimeUnit.SECONDS);
     }
 
     private Runnable matchmakingTask(PriorityBlockingQueue<Player> playerQueue) {
@@ -62,6 +70,35 @@ public class MatchmakingService {
             }
         };
     }
+
+    // Iterates over all Players in all Teams to update Teams priorityLevel
+    private Runnable priorityUpdateTask() {
+        return () -> {
+            incompleteTeams.parallelStream().forEach(updatePriority);
+            incompleteMatches.parallelStream().map(Match::getTeam1).forEach(updatePriority);
+        };
+    }
+
+    // Updates Team priority
+    // E.g.
+    // If first Player in Team getTimeInQueueInSeconds() = 10 -> Team priorityLevel = 2
+    // Depends on MAX_PRIORITY_LEVEL and SECONDS_PER_PRIORITY_LEVEL values in Constants class
+    private final Consumer<Team> updatePriority = team -> {
+        Player oldestPlayer = team.getPlayers().get(0);
+        int newPriorityLevel = Math.toIntExact(oldestPlayer.getTimeInQueueInSeconds() / Constants.SECONDS_PER_PRIORITY_LEVEL);
+
+        if (newPriorityLevel <= Constants.MAX_PRIORITY_LEVEL) {
+            int oldPriorityLevel = team.getPriorityLevel();
+            team.setPriorityLevel(newPriorityLevel);
+
+            // Internal log
+            if (oldPriorityLevel != newPriorityLevel) {
+                System.out.println("Updated priorityLevel (" + oldPriorityLevel +
+                        "->" + newPriorityLevel + ") for oldest Player in Team (" +
+                        oldestPlayer.getTimeInQueueInSeconds() + " seconds in queue)");
+            }
+        }
+    };
 
     private void processTeam(Team team) {
         if (team.isFull()) {

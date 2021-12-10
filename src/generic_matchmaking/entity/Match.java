@@ -8,10 +8,12 @@ public class Match {
     private Team team1;
     private Team team2;
 
-    // Determines if difference between Team 1 and passed
-    // team2 skills is within Team balance delta
+    // Determines if difference between Team 1 and passed team2 skills
+    // is within Team balance delta + priority overhead
     public boolean isMatchBalancedWith(Team team2) {
-        return team1 != null && Constants.Thresholds.TEAM_DELTA >= Math.abs(team1.getTotalSkill() - team2.getTotalSkill());
+        return team1 != null && Constants.Thresholds.TEAM_DELTA +
+                Constants.Thresholds.PRIORITY_LEVEL_DELTAS.get(team1.getPriorityLevel())
+                >= Math.abs(team1.getTotalSkill() - team2.getTotalSkill());
     }
 
     // Is Team 1 already filled and waiting
